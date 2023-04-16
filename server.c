@@ -129,12 +129,13 @@ char* receive_udp_message(int arg) {
 int main(){
     // Initial server port
     int fd_list[MAX_CLIENT];
-    for (int i; i < MAX_CLIENT; i++){
-        fd_list[i] = (bind_udp(port_list[i]));
-    }
+    // for (int i; i < MAX_CLIENT; i++){
+    //     fd_list[i] = (bind_udp(port_list[i]));
+    // }
+    fd_list[0] = (bind_udp(server_port));
     while (1) {
         char* msg;
-        msg = receive_udp_message(server_port);
+        msg = receive_udp_message(fd_list[0]);
 
         
     }

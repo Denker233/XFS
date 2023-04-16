@@ -5,7 +5,7 @@ char server_IP[20];
 int server_port = 8000;
 struct machIDlaten map[MAXNODES]; //key value pairs to store latency
 char ID[15];
-char* dirname;
+char dirname[100];
 char IP[20]="127.0.0.1";
 int node_node_port;
 int load_index=0;
@@ -114,13 +114,12 @@ void read_latency(){//read latency.txt file and store the key value pair into ma
 }
 
 void boot(){
-    read_latency();//read latency.txt to map struct
     char message[100];
     pthread_t upload_thread;
     strcpy(message,"boot;");
     strcat(message,ID);
     strcat(message,";");
-    DIR *dir;
+    DIR* dir;
     struct dirent *ent;
     if ((dir = opendir (dirname)) != NULL) {//loop through and get every filename under the machID
         while ((ent = readdir (dir)) != NULL) {
@@ -161,7 +160,7 @@ int getload(int port){
     return atoi(buf);
 }
 
-void download(char* filename){
+void* download(char* filename){
     char path[100];
     int min_score=INT_MAX;
     pthread_t thread_ids[20];
@@ -283,8 +282,9 @@ void* receive_node(){
 
 int main(void) {
     pthread_t node_node_thread,download_thread;
-    dirname =" /home/tian0138/csci-5105/XFS/share/";
+    strcpy(dirname,"/home/tian0138/csci-5105/XFS/share/");
     strcat(dirname,ID); 
+    read_latency();//read latency.txt to map struct
     printf("Input machID\n");
     scanf("%s",ID);
     if(get_latency(ID)==-1){//add new node to latency file 
@@ -310,10 +310,10 @@ int main(void) {
         fprintf(stderr, "Error creating thread\n");
         return -1;
     }
-    printf("Input function and filename")
+    printf("Input function and filename");
     scanf("%s %s", func,filename);
     if(strcmp(func,"download")==0){
-        if(pthread_create(&download_thread,NULL,download,filename)<0{
+        if(pthread_create(&download_thread,NULL,(void*)download,filename)<0){
             fprintf(stderr, "Error creating thread\n");
             return -1;
         }
