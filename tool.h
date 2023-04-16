@@ -35,58 +35,60 @@ struct machIDlaten{
     int port;
 };
 
-int send_message(char *IP, int Port, char *message)
-{
-    int sockfd;
-    struct addrinfo hints, *servinfo, *p;
-    int rv;
-    int numbytes;
+// struct 
 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; // set to AF_INET to use IPv4
-    hints.ai_socktype = SOCK_DGRAM;
+// int send_message_thread(char *IP, int Port, char *message)
+// {
+//     int sockfd;
+//     struct addrinfo hints, *servinfo, *p;
+//     int rv;
+//     int numbytes;
 
-    char port_str[6];
-    sprintf(port_str, "%d", Port);
+//     memset(&hints, 0, sizeof hints);
+//     hints.ai_family = AF_INET; // set to AF_INET to use IPv4
+//     hints.ai_socktype = SOCK_DGRAM;
 
-    if ((rv = getaddrinfo(IP, port_str, &hints, &servinfo)) != 0)
-    {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        exit(1);
-    }
+//     char port_str[6];
+//     sprintf(port_str, "%d", Port);
 
-    // loop through all the results and make a socket
-    for (p = servinfo; p != NULL; p = p->ai_next)
-    {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1)
-        {
-            perror("talker: socket");
-            continue;
-        }
+//     if ((rv = getaddrinfo(IP, port_str, &hints, &servinfo)) != 0)
+//     {
+//         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+//         exit(1);
+//     }
 
-        break;
-    }
+//     // loop through all the results and make a socket
+//     for (p = servinfo; p != NULL; p = p->ai_next)
+//     {
+//         if ((sockfd = socket(p->ai_family, p->ai_socktype,
+//                              p->ai_protocol)) == -1)
+//         {
+//             perror("talker: socket");
+//             continue;
+//         }
 
-    if (p == NULL)
-    {
-        fprintf(stderr, "talker: failed to create socket\n");
-        exit(1);
-    }
+//         break;
+//     }
 
-    if ((numbytes = sendto(sockfd, message, strlen(message), 0,
-                           p->ai_addr, p->ai_addrlen)) == -1)
-    {
-        perror("talker: sendto");
-        exit(1);
-    }
+//     if (p == NULL)
+//     {
+//         fprintf(stderr, "talker: failed to create socket\n");
+//         exit(1);
+//     }
 
-    freeaddrinfo(servinfo);
+//     if ((numbytes = sendto(sockfd, message, strlen(message), 0,
+//                            p->ai_addr, p->ai_addrlen)) == -1)
+//     {
+//         perror("talker: sendto");
+//         exit(1);
+//     }
 
-    printf("talker: sent %d bytes to %s\n", numbytes, IP);
-    // close(sockfd);
-    return sockfd;
-}
+//     freeaddrinfo(servinfo);
+
+//     printf("talker: sent %d bytes to %s\n", numbytes, IP);
+//     // close(sockfd);
+//     return sockfd;
+// }
 
 
 
