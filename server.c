@@ -2,28 +2,32 @@
 
 #define MAX_CLIENT 10
 
-int client_count=0;
+int client_count=1;
 int server_port = 8000;
 int port_list[10] = {8010, 8020, 8030, 8040}; // port of the existing node
 char* node_list[10] = {"node1", "node2", "node3", "node4", "\0"};
-char* files[10];
+char files[MAX_CLIENT][152] = {0};
 
 
 
 int update_list(char* node_name, char* new_resource){
     char* name;
-    char* saveptr;
     int i;
+    name = strtok(new_resource, ";");
+    name = strtok(NULL, ";");
+
     for (i = 0; i < client_count; i++){
+        puts(node_list[i]);
         if (strcmp(node_list[i], node_name) == 0){
             break;
         }
     }
     
-    while ((name = strtok_r(NULL, ";", &saveptr)) != NULL) {
+    while ((name = strtok(NULL, ";")) != NULL) {
         strcat(files[i], name);
         strcat(files[i], ";");
     }
+    puts(files[i]);
     return 0;
 }
 
@@ -88,14 +92,14 @@ char* receive_udp_message(int arg) {
             perror("recvfrom");
             exit(1);
         }
-        printf("%s",buf);
-        printf("\n");
         buf[numbytes] = '\0';
-        printf("Received subsribed article from server: %s\n", buf);
+        printf("Received request from node: %s\n", buf);
         /* parse the request from node */
         char* request;
+        char* buf_copy;
+        strcpy(buf_copy, buf);
         // char* saveptr;
-        request = strtok(buf, ";");
+        request = strtok(buf_copy, ";");
         // request = strtok_r(buf, ";", &saveptr);
         printf("request: %s\n",request);
         /* Calling methods according to request */
@@ -114,13 +118,10 @@ char* receive_udp_message(int arg) {
         else if (strcmp(request, "boot")==0) { // update;file1;file2;file3
             char* saveptr;
             char* node_name;
-            char* resource;
             // node_name = strtok_r(NULL, ";", &saveptr);
             node_name = strtok(NULL, ";");
-            resource = buf; //  buf = boot;node1;file1;file2
             printf("before updatelist\n");
-            printf("nodename and resource: %s %s\n",node_name,resource);
-            update_list(node_name, resource);
+            update_list(node_name, buf);
             
             char* notify;
             notify = "Update succeed\n";
