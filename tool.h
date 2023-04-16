@@ -14,6 +14,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <dirent.h>
 
 #define MAX_CLIENTS 100
 #define MAX_SUBSCRIPTIONS 10
