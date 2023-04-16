@@ -79,6 +79,7 @@ int bind_udp(int port){
 char* receive_udp_message(int arg) {
     int sockfd = arg;
     char buf[MAXBUFLEN];
+    memset(buf,0,sizeof(buf));
     struct sockaddr_storage sender_addr;
     socklen_t addr_len = sizeof(sender_addr);
     while (1) {
@@ -93,17 +94,19 @@ char* receive_udp_message(int arg) {
         printf("Received subsribed article from server: %s\n", buf);
         /* parse the request from node */
         char* request;
-        char* saveptr;
-        request = strtok_r(buf, ";", &saveptr);
-        
+        // char* saveptr;
+        request = strtok(buf, ";");
+        // request = strtok_r(buf, ";", &saveptr);
+        printf("request: %s\n",request);
         /* Calling methods according to request */
         struct addrinfo* sender;
-        if (strcmp(request, "Find") == 0) {
+        if (strcmp(request, "find") == 0) {
             sendto(sockfd, request, sizeof(node_list), 0, (struct sockaddr *) &sender_addr, addr_len);
         }
-        else if (strcmp(request, "Download") == 0) {
+        else if (strcmp(request, "download") == 0) {
             char* name;
-            name = strtok_r(NULL, ";", &saveptr);
+            // name = strtok_r(NULL, ";", &saveptr);
+            name = strtok(NULL, ";");
             char* port_str;
             resource_locate(name, port_str);
             sendto(sockfd, request, sizeof(port_str), 0, (struct sockaddr *)&sender_addr, addr_len);
@@ -112,8 +115,11 @@ char* receive_udp_message(int arg) {
             char* saveptr;
             char* node_name;
             char* resource;
-            node_name = strtok_r(NULL, ";", &saveptr);
+            // node_name = strtok_r(NULL, ";", &saveptr);
+            node_name = strtok(NULL, ";");
             resource = buf; //  buf = boot;node1;file1;file2
+            printf("before updatelist\n");
+            printf("nodename and resource: %s %s\n",node_name,resource);
             update_list(node_name, resource);
             
             char* notify;

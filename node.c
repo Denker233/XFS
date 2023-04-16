@@ -9,14 +9,17 @@ char dirname[100];
 char IP[20]="127.0.0.1";
 int node_node_port;
 int load_index=0;
+char local_storage[100]; //"/home/tian0138/csci-5105/XFS/share/"
 
 int min(int x,int y){
     return (x < y) ? x : y;
 }
 
 int get_latency(char* machID){
+    printf("in get latency loop\n");
     for(int i =0;i<MAXNODES;i++){
         if (strcmp(map[i].machID,machID)==0){
+            printf("%s %s\n",map[i].machID,machID);
             return map[i].latency;
         }
     }
@@ -86,7 +89,8 @@ int send_message(char *IP, int Port, char *message)
 }
 
 void read_latency(){//read latency.txt file and store the key value pair into map
-    FILE *file = fopen("latency.txt", "r");
+    printf("witin read latency\n");
+    FILE *file = fopen(strcat(local_storage,"latency.txt"), "r");
     if (file == NULL) {
         printf("Error: could not open file\n");
         exit(1);
@@ -95,19 +99,19 @@ void read_latency(){//read latency.txt file and store the key value pair into ma
     char line[100];
     int i =0;
     while (fgets(line, sizeof(line), file) != NULL && i<MAXNODES) {
-        printf("%s", line);
+        printf("%s\n", line);
         token = strtok(line,":");
         strcpy(map[i].machID,token);
-        printf("%s", token);
+        printf("%s\n", token);
         token = strtok(NULL,":");
         map[i].latency=atoi(token);
-        printf("%d", atoi(token));
+        printf("%d\n", atoi(token));
         token = strtok(NULL,":");
         map[i].port=atoi(token);
         if(strcmp(map[i].machID,ID)==0){ //if node already in the txt then assign the port to the global
             node_node_port=map[i].port;
         }
-        printf("%d", atoi(token));
+        printf("%d\n", atoi(token));
         i++;
     }
     fclose(file);
@@ -118,7 +122,7 @@ void boot(){
     pthread_t upload_thread;
     strcpy(message,"boot;");
     strcat(message,ID);
-    strcat(message,";");
+    // strcat(message,";");
     DIR* dir;
     struct dirent *ent;
     if ((dir = opendir (dirname)) != NULL) {//loop through and get every filename under the machID
@@ -283,12 +287,16 @@ void* receive_node(){
 int main(void) {
     pthread_t node_node_thread,download_thread;
     strcpy(dirname,"/home/tian0138/csci-5105/XFS/share/");
-    strcat(dirname,ID); 
-    read_latency();//read latency.txt to map struct
+    strcpy(local_storage,dirname);
+    // strcat(local_storage,ID); 
     printf("Input machID\n");
     scanf("%s",ID);
+    printf("%s\n",ID);
+    strcat(dirname,ID); 
+    read_latency();//read latency.txt to map struct
     if(get_latency(ID)==-1){//add new node to latency file 
-        FILE *fp=fopen(strcat(dirname,"latency.txt"),"w");
+        printf("within if getlatency\n");
+        FILE *fp=fopen(strcat("/home/tian0138/csci-5105/XFS/share/","latency.txt"),"w");
         if(fp == NULL) {
             printf("fail open nlatency txt\n");
         }
@@ -310,7 +318,7 @@ int main(void) {
         fprintf(stderr, "Error creating thread\n");
         return -1;
     }
-    printf("Input function and filename");
+    printf("Input function and filename\n");
     scanf("%s %s", func,filename);
     if(strcmp(func,"download")==0){
         if(pthread_create(&download_thread,NULL,(void*)download,filename)<0){
@@ -319,6 +327,8 @@ int main(void) {
         }
         load_index++;
     }
+
+    pthread_join(download_thread,NULL);
 
     
    
