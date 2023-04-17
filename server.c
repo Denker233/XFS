@@ -46,7 +46,7 @@ int resource_locate(char* resource, char* result) {
     }
     for (int i = 0; i < MAXNODES; i++){
         strcpy(current,files[i]);
-        printf("current and loop: %s %d\n",current,i);
+        // printf("current and loop: %s %d\n",current,i);
         char* name;
         name=strtok(current, ";");
         // name = strtok_r(name, ";", &saveptr);
@@ -54,7 +54,7 @@ int resource_locate(char* resource, char* result) {
             memset(current,0,sizeof(current));
             continue;
         }
-        printf("name first: %s\n",name);
+        // printf("name first: %s\n",name);
         if (name!=NULL&&strcmp(name, resource) == 0) {
             strcat(result, node_list[i]);
             strcat(result, ";");
@@ -64,7 +64,7 @@ int resource_locate(char* resource, char* result) {
         }
         while ((name = strtok(NULL, ";")) != NULL) {
         if (strcmp(name, resource) == 0) {
-            strcat(result, name);
+            strcat(result, node_list[i]);
             strcat(result, ";");
             printf("result while: %s\n",result);
             memset(current,0,sizeof(current));
@@ -74,6 +74,7 @@ int resource_locate(char* resource, char* result) {
         memset(current,0,sizeof(current));
     }
     result[strlen(result)-1]='\0';
+    printf("result: %s\n",result);
     return 0;
 }
 

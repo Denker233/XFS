@@ -35,6 +35,24 @@ struct machIDlaten{
     int port;
 };
 
+int check_if_in(char* element,char* list,char* sym){
+    char *token;
+    token = strtok(list, sym);
+
+    while (token != NULL) {
+    // Compare the token with the target element
+    if (strcmp(token, element) == 0) {
+        printf("%s is in\n",sym);
+        return 1;
+    }
+    // Get the next token
+    token = strtok(NULL, sym);
+  }
+  return -1;
+}
+
+
+
 // struct 
 
 // int send_message_thread(char *IP, int Port, char *message)
