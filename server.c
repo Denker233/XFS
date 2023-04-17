@@ -32,17 +32,30 @@ int update_list(char* node_name, char* new_resource){
 }
 
 int resource_locate(char* resource, char* result) {
-    for (int i = 0; i<MAX_CLIENT; i--){
-        char* current;
+    for (int i = 0; i<MAXNODES; i++){
+        char current[200];
         strcpy(current,files[i]);
-        char* saveptr;
         char* name;
-        name = strtok_r(name, ";", &saveptr);
+        printf("current: %s\n",current);
+        if(current=='\0'){
+            printf("current==0");
+            continue;
+        }
+        // name = strtok_r(name, ";", &saveptr);
+        name = strtok(current, ";");
+        printf("first name in resource locate: %s\n",name);
         if (strcmp(name, resource) == 0) {
             strcat(result, name);
             strcat(result, ";");
             continue;
         }
+        while ((name = strtok(NULL, ";")) != NULL) {
+        if (strcmp(name, resource) == 0) {
+            strcat(result, name);
+            strcat(result, ";");
+            continue;
+        }
+    }
     }
     return 0;
 }
@@ -96,23 +109,28 @@ char* receive_udp_message(int arg) {
         printf("Received request from node: %s\n", buf);
         /* parse the request from node */
         char* request;
-        char* buf_copy;
+        char buf_copy[100];
         strcpy(buf_copy, buf);
         // char* saveptr;
         request = strtok(buf_copy, ";");
         // request = strtok_r(buf, ";", &saveptr);
-        printf("request: %s\n",request);
+        printf("request:%s\n",request);
         /* Calling methods according to request */
+        printf("after request\n");
         struct addrinfo* sender;
+        printf("after request\n");
         if (strcmp(request, "find") == 0) {
             sendto(sockfd, request, sizeof(node_list), 0, (struct sockaddr *) &sender_addr, addr_len);
         }
         else if (strcmp(request, "download") == 0) {
+            printf("in download\n");
             char* name;
             // name = strtok_r(NULL, ";", &saveptr);
             name = strtok(NULL, ";");
-            char* port_str;
+            printf("filename: %s\n",name);
+            char port_str[100];
             resource_locate(name, port_str);
+            printf("all nodes with that file: %s",port_str);
             sendto(sockfd, request, sizeof(port_str), 0, (struct sockaddr *)&sender_addr, addr_len);
         }
         else if (strcmp(request, "boot")==0) { // update;file1;file2;file3
