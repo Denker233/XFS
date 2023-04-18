@@ -168,6 +168,7 @@ int getload(int port){
 }
 
 void* download(char* filename){
+    int empty=1;
     char path[100];
     pthread_t thread_ids[20];
     char* token;
@@ -234,10 +235,14 @@ void* download(char* filename){
     }
     else{
         printf("create file success\n");
-        fprintf(fp, "%s", token);
+        if(token!=NULL){
+            fprintf(fp, "%s", token);
+        }
         fclose(fp);
+        printf("after file success\n");
     }
     close(sock);
+    printf("after close sock\n");
 }
 
 int bind_udp(int port){
@@ -293,7 +298,13 @@ void read_intended_file(char* filename,char* message){
     strcat(message,";");
     strcat(message,content);
     message[strlen(message)] = '\0';
+    // if(size==0){
+    //     message[strlen(message)-1]='\0';
+    //     puts("in ");
+    //     puts(message);
+    // }
     puts(message);
+    memset(content,0,sizeof(content));
     fclose(fp);
     
     
@@ -413,13 +424,15 @@ int main(void) {
         return -1;
     }
     printf("Input function and filename\n");
-    scanf("%s %s", func,filename);
-    if(strcmp(func,"download")==0){
+    while(1){
+        scanf("%s %s", func,filename);
+        if(strcmp(func,"download")==0){
         if(pthread_create(&download_thread,NULL,(void*)download,filename)<0){
             fprintf(stderr, "Error creating thread\n");
             return -1;
         }
         load_index++;
+        }
     }
 
     pthread_join(download_thread,NULL);
