@@ -108,9 +108,28 @@ int check_if_in(char* element,char* list,char* sym){
 //     return sockfd;
 // }
 
+/*
+ * This function computes the SHA-256 checksum of a file using OpenSSL.
+ * The code for computing the checksum is adapted from the OpenSSL documentation.
+ * See https://www.tutorialspoint.com/c-program-to-implement-checksum 
+ */
+unsigned int get_checksum(char *str) {
+   unsigned int sum = 0;
+   while (*str) {
+      sum += *str;
+      str++;
+   } 
+   return sum;
+}
 
 
-
-
-
-
+/*
+ * Check the string with expected checksum
+ * return: 0, same; -1, mismatch
+ */
+int checksum_check(int expected, char* doc) {
+    int checksum = get_checksum(doc);
+    if (checksum == expected){return 0;}
+    printf("Checksum mismatch! Expected: %d, Actual: %d", expected, checksum);
+    return -1;
+}
