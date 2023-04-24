@@ -6,13 +6,15 @@ int client_count=1;
 int server_port = 8000;
 int port_list[10] = {8010, 8020, 8030, 8040}; // port of the existing node
 char* node_list[10] = {"node1", "node2", "node3", "node4", "\0"};
-char files[MAXNODES][152] = {{0}};
+char files[MAXNODES][152] = {{0}}; // files[0][j] = "123.txt;118"
 
 
 
 int update_list(char* node_name, char* new_resource){
+    puts(new_resource);
     char* name;
     int i;
+    char* checksum;
     name = strtok(new_resource, ";");
     name = strtok(NULL, ";");
     name=strtok(NULL, ";");
@@ -23,11 +25,19 @@ int update_list(char* node_name, char* new_resource){
             break;
         }
     }
+    // loop over the file list and update to files[]
+    checksum = strtok(NULL, ";");
     strcat(files[i], name);
+    strcat(files[i], ";");
+
+    strcat(files[i], checksum);
     name=strtok(NULL, ";");
     while (name  != NULL) {
+        checksum = strtok(NULL, ";");
         strcat(files[i], ";");
         strcat(files[i], name);
+        strcat(files[i], ";");
+        strcat(files[i], checksum);
         printf("file: %s\n",files[i]);
         name=strtok(NULL, ";");
     }
@@ -49,27 +59,32 @@ int resource_locate(char* resource, char* result) {
         // printf("current and loop: %s %d\n",current,i);
         char* name;
         name=strtok(current, ";");
+        
         // name = strtok_r(name, ";", &saveptr);
         if(current==NULL){
             memset(current,0,sizeof(current));
             continue;
         }
+        char* checksum = strtok(NULL, ";");
         // printf("name first: %s\n",name);
         if (name!=NULL&&strcmp(name, resource) == 0) {
             strcat(result, node_list[i]);
             strcat(result, ";");
+            strcat(result, checksum);
             printf("result first: %s\n",result);
             memset(current,0,sizeof(current));
             continue;
         }
         while ((name = strtok(NULL, ";")) != NULL) {
-        if (strcmp(name, resource) == 0) {
-            strcat(result, node_list[i]);
-            strcat(result, ";");
-            printf("result while: %s\n",result);
-            memset(current,0,sizeof(current));
-            continue;
-        }
+            checksum = strtok(NULL, ";");
+            if (strcmp(name, resource) == 0) {
+                strcat(result, node_list[i]);
+                strcat(result, ";");
+                strcat(result, checksum);
+                printf("result while: %s\n",result);
+                memset(current,0,sizeof(current));
+                continue;
+            }
         }
         memset(current,0,sizeof(current));
     }
@@ -138,9 +153,13 @@ char* receive_udp_message(int arg) {
         struct addrinfo* sender;
         printf("after request\n");
         if (strcmp(request, "find") == 0) {
-            sendto(sockfd, request, sizeof(node_list), 0, (struct sockaddr *) &sender_addr, addr_len);
+            char message[100];
+            char* resource;
+            resource = strtok(NULL, ";");
+            resource_locate(resource, message);
+            sendto(sockfd, message, sizeof(node_list), 0, (struct sockaddr *) &sender_addr, addr_len);
         }
-        else if (strcmp(request, "download") == 0) {
+        else if (strcmp(request, "download") == 0 || strcmp(request, "find") == 0) {
             printf("in download\n");
             char* name;
             // name = strtok_r(NULL, ";", &saveptr);
@@ -153,7 +172,6 @@ char* receive_udp_message(int arg) {
             sendto(sockfd, nodes, sizeof(nodes), 0, (struct sockaddr *)&sender_addr, addr_len);
         }
         else if (strcmp(request, "boot")==0) { // update;file1;file2;file3
-            char* saveptr;
             char* node_name;
             // node_name = strtok_r(NULL, ";", &saveptr);
             node_name = strtok(NULL, ";");
@@ -163,6 +181,7 @@ char* receive_udp_message(int arg) {
             notify = "Update succeed\n";
             sendto(sockfd, notify, sizeof(notify), 0, (struct sockaddr *)&sender_addr, addr_len);
         }
+        
     }
 }
 

@@ -17,11 +17,11 @@ int min(int x,int y){
     return (x < y) ? x : y;
 }
 
+
 int get_latency(char* machID){
     printf("in get latency loop\n");
     for(int i =0;i<MAXNODES;i++){
         if (strcmp(map[i].machID,machID)==0){
-            printf("%s %s\n",map[i].machID,machID);
             return map[i].latency;
         }
     }
@@ -92,7 +92,8 @@ int send_message(char *IP, int Port, char *message)
 
 void read_latency(){//read latency.txt file and store the key value pair into map
     printf("witin read latency\n");
-    FILE *file = fopen(strcat(local_storage,"latency.txt"), "r");
+    // FILE *file = fopen(strcat(local_storage,"latency.txt"), "r");
+    FILE *file = fopen("./share/latency.txt", "r");
     if (file == NULL) {
         printf("Error: could not open file\n");
         exit(1);
@@ -120,21 +121,33 @@ void read_latency(){//read latency.txt file and store the key value pair into ma
 }
 
 void boot(){
-    char message[100];
+    char dir_share[50] = "./share/";
+    strcat(dir_share, ID);
+    strcat(dir_share, "/");
+    char message[1024];
     pthread_t upload_thread;
     strcpy(message,"boot;");
     strcat(message,ID);
     // strcat(message,";");
     DIR* dir;
     struct dirent *ent;
-    if ((dir = opendir (dirname)) != NULL) {//loop through and get every filename under the machID
+    if ((dir = opendir (dir_share)) != NULL) {//loop through and get every filename under the machID
         while ((ent = readdir (dir)) != NULL) {
             if(strncmp((ent->d_name),".",1)==0){//only transmit the file name
                 continue;
             }
-            printf ("%s\n", ent->d_name);
-            char str[30]=";";
-            strcat(str,ent->d_name);
+            /* get check sum for each file */
+            int checksum = 0;
+            char buf[100];
+            char file_name[50];
+            strcpy(file_name, dir_share);
+            strcat(file_name, ent->d_name);
+            FILE* fp = fopen(file_name, "r");
+            while (fgets(buf, sizeof(buf), fp)){
+                checksum += get_checksum(buf);
+            }
+            char str[512];
+            sprintf(str, ";%s;%d", ent->d_name, checksum);
             strcat(message,str);
         }
         closedir (dir);
@@ -143,14 +156,15 @@ void boot(){
         exit(0);
     }
     strcpy(server_IP,"127.0.0.1");
-    printf("%s\n", message);
     send_message(server_IP,server_port, message);
     strcpy(filelist,message);
 }
 
 int getload(int port){
+    puts("in get load\n");
     char message[20];
     strcpy(message,"getload");
+    puts("before send_message\n");
     int sock=send_message(IP,port, message);
     char buf[MAXBUFLEN];
     struct sockaddr_storage sender_addr;
@@ -171,7 +185,8 @@ void* download(char* filename){
     int empty=1;
     char path[100];
     pthread_t thread_ids[20];
-    char* token;
+    char* checksum;
+    int min_checksum = 0;
     FILE *fp;
     char message[100];
     int load,latency,score,port,min_port;
@@ -179,6 +194,7 @@ void* download(char* filename){
     strcat(message,filename);
     int sock=send_message(server_IP,server_port,message);//send the intended filename to server
     char buf[MAXBUFLEN];
+    // char* ptr = buf;
     struct sockaddr_storage sender_addr;
     socklen_t addr_len = sizeof(sender_addr);
     int numbytes = recvfrom(sock, buf, MAXBUFLEN-1 , 0, (struct sockaddr *)&sender_addr, &addr_len);
@@ -191,44 +207,73 @@ void* download(char* filename){
     buf[numbytes] = '\0';  // get back a list of nodes with that filename
     printf("Received subsribed article from server: %s\n", buf);
     close(sock);                 // close the port with server 
-    token = strtok(buf,";");
-    if(token==NULL){
+    // token = strtok(buf,";");
+    // printf("token is %s\n", token);
+    // if(token==NULL){ // What is this chunk for ????
+    //     checksum = strtok(NULL,";");
+    //     port=get_port(token);
+    //     puts("if token == NULL\n");
+    //     load=getload(port);//get the load of the node
+    //     latency = get_latency(token);
+    //     score=load+0.1*latency;
+    //     min_score=min(score,min_score);
+    //     if(min_score==score){min_port=port;}//update the minport to best peer
+    // }
+
+    // loop through every node for the smallest latency; token here means the machID
+    // while(token!=NULL){
+    char* token = buf;
+    while ((token = strtok(token, ";")) != NULL){
+        printf("loop11111\n");
+        puts(token);
+        checksum = strtok(NULL, ";");
+        puts(checksum);
+
         port=get_port(token);
-        load=getload(port);//get the load of the node
+        load = getload(port);//get the load of the node
+        printf("load is %d\n", load);
         latency = get_latency(token);
         score=load+0.1*latency;
         min_score=min(score,min_score);
-        if(min_score==score){min_port=port;}//update the minport to best peer
+        // update the minport to best peer
+        if(min_score==score){
+            min_port=port;
+            printf("min checksm:");
+            char cs_str[4];
+            strcpy(cs_str, checksum);
+            min_checksum = atoi(cs_str);
+            printf("min checksm: %d", min_checksum);
+        }
+        token = NULL;
     }
-    while(token!=NULL){//loop through every node; token here means the machID
-        port=get_port(token);
-        load=getload(port);//get the load of the node
-        latency = get_latency(token);
-        score=load+0.1*latency;
-        min_score=min(score,min_score);
-        if(min_score==score){min_port=port;}//update the minport to best peer
+    /* send download request to selected peer */
+    /* re-fetch on mismatch */
+    while (checksum_check(min_checksum, token) == -1) {
+        printf("retry loop\n");
+        sock=send_message(IP,min_port,message); //send download;filename to the intended file
+        puts("send yes\n");
+        memset(buf,0,sizeof(buf));
+        struct sockaddr_storage sender_addr2;
+        socklen_t addr_len2 = sizeof(sender_addr2);
+        numbytes = recvfrom(sock, buf, MAXBUFLEN-1 , 0, (struct sockaddr *)&sender_addr2, &addr_len2);
+        puts("receive yes\n");
+        if (numbytes == -1) {
+            perror("recvfrom");
+            exit(1);
+        }
+        printf("%s",buf);
+        printf("\n");
+        buf[numbytes] = '\0';  // get back a list of nodes with that filename
+        printf("Received subsribed article from server: %s\n", buf);
+        strcpy(path,dirname);
+        strcat(path,"/");
+        strcat(path,filename);
+        token=strtok(buf,";");
         token=strtok(NULL,";");
+        token=strtok(NULL,";");
+        puts(token);
     }
-    sock=send_message(IP,min_port,message); //send download;filename to the intended file
-    memset(buf,0,sizeof(buf));
-    struct sockaddr_storage sender_addr2;
-    socklen_t addr_len2 = sizeof(sender_addr2);
-    numbytes = recvfrom(sock, buf, MAXBUFLEN-1 , 0, (struct sockaddr *)&sender_addr2, &addr_len2);
-    if (numbytes == -1) {
-        perror("recvfrom");
-        exit(1);
-    }
-    printf("%s",buf);
-    printf("\n");
-    buf[numbytes] = '\0';  // get back a list of nodes with that filename
-    printf("Received subsribed article from server: %s\n", buf);
-    strcpy(path,dirname);
-    strcat(path,"/");
-    strcat(path,filename);
-    token=strtok(buf,";");
-    token=strtok(NULL,";");
-    token=strtok(NULL,";");
-    puts(token);
+
     fp=fopen(path,"w");
     if(fp==NULL){
         printf("error creating file\n");
@@ -277,6 +322,7 @@ int bind_udp(int port){
     // printf("Client IP: %s, Port: %d\n", client_IP, client_Port);
     return sockfd;
 }
+
 void read_intended_file(char* filename,char* message){
     FILE *fp;
     char path[100];
@@ -386,12 +432,25 @@ void* receive_node(){
     puts("after receive");    
 }
 
+int find(char* resource){
+    char message[100] = "find;";
+    strcat(message, resource);
+    int sockfd = send_message(server_IP, server_port, message);
+    memset(message, 0, sizeof(message));
+    struct sockaddr_storage sender_addr;
+    socklen_t addr_len = sizeof(sender_addr);
+    recvfrom(sockfd, message, sizeof(message), 0, (struct sockaddr *)&sender_addr, &addr_len);
+    printf("File list: %s", message);
+    return 0;
+}
+
 
 
 
 int main(void) {
     pthread_t node_node_thread,download_thread;
-    strcpy(dirname,"/home/tian0138/csci-5105/XFS/share/");
+    // strcpy(dirname,"/home/tian0138/csci-5105/XFS/share/");
+    strcpy(dirname, "/home/wan00807/5105/XFS/share/");
     strcpy(local_storage,dirname);
     // strcat(local_storage,ID); 
     printf("Input machID\n");
@@ -399,9 +458,9 @@ int main(void) {
     printf("%s\n",ID);
     strcat(dirname,ID); 
     read_latency();//read latency.txt to map struct
-    if(get_latency(ID)==-1){//add new node to latency file 
-        printf("within if getlatency\n");
-        FILE *fp=fopen(strcat("/home/tian0138/csci-5105/XFS/share/","latency.txt"),"w");
+    if(get_latency(ID)==-1){ //add new node to latency file 
+        // FILE *fp=fopen(strcat("/home/tian0138/csci-5105/XFS/share/","latency.txt"),"w");
+        FILE *fp=fopen("./share/latency.txt","w");
         if(fp == NULL) {
             printf("fail open nlatency txt\n");
         }
@@ -418,28 +477,27 @@ int main(void) {
     }
     char func[10];
     char filename[15];
+    puts("before boots");
     boot();
+    /* Node-node connection thread */
     if(pthread_create(&node_node_thread,NULL,receive_node,NULL)<0){//bind node waiting for other node's request
         fprintf(stderr, "Error creating thread\n");
         return -1;
     }
-    printf("Input function and filename\n");
+    printf("Input function and filename:\n");
     while(1){
         scanf("%s %s", func,filename);
         if(strcmp(func,"download")==0){
-        if(pthread_create(&download_thread,NULL,(void*)download,filename)<0){
-            fprintf(stderr, "Error creating thread\n");
-            return -1;
+            if(pthread_create(&download_thread,NULL,(void*)download,filename)<0){
+                fprintf(stderr, "Error creating thread\n");
+                return -1;
+            }
+            load_index++;
         }
-        load_index++;
+        else if (strcmp(func,"find") == 0) {
+            find(filename);
         }
     }
-
     pthread_join(download_thread,NULL);
-
-    
-   
-
-
 }
 
