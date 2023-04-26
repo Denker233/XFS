@@ -3,8 +3,8 @@
 #define MAX_CLIENT 10
 
 int client_count=1;
-int server_port = 8000;
-int port_list[10] = {8010, 8020, 8030, 8040}; // port of the existing node
+int server_port = 8002;
+int port_list[10] = {7072, 8022, 8030, 8040}; // port of the existing node
 char* node_list[10] = {"node1", "node2", "node3", "node4", "\0"};
 char files[MAXNODES][152] = {{0}}; // files[0][j] = "123.txt;118"
 
@@ -71,6 +71,7 @@ int resource_locate(char* resource, char* result) {
             strcat(result, node_list[i]);
             strcat(result, ";");
             strcat(result, checksum);
+            strcat(result, ";");
             printf("result first: %s\n",result);
             memset(current,0,sizeof(current));
             continue;

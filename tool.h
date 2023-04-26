@@ -114,6 +114,10 @@ int check_if_in(char* element,char* list,char* sym){
  * See https://www.tutorialspoint.com/c-program-to-implement-checksum 
  */
 unsigned int get_checksum(char *str) {
+    printf("get checksum\n");
+    if (str == NULL) {
+        return 0;
+    }
    unsigned int sum = 0;
    while (*str) {
       sum += *str;
@@ -129,7 +133,8 @@ unsigned int get_checksum(char *str) {
  */
 int checksum_check(int expected, char* doc) {
     int checksum = get_checksum(doc);
+    printf("in checksum_check\n");
     if (checksum == expected){return 0;}
-    printf("Checksum mismatch! Expected: %d, Actual: %d", expected, checksum);
+    printf("Checksum mismatch! Expected: %d, Actual: %d\n", expected, checksum);
     return -1;
 }

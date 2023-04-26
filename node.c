@@ -2,7 +2,7 @@
 
 
 char server_IP[20];
-int server_port = 8000;
+int server_port = 8002;
 struct machIDlaten map[MAXNODES]; //key value pairs to store latency
 char ID[15];
 char dirname[100];//"/home/tian0138/csci-5105/XFS/share/ID"
@@ -22,6 +22,7 @@ int get_latency(char* machID){
     printf("in get latency loop\n");
     for(int i =0;i<MAXNODES;i++){
         if (strcmp(map[i].machID,machID)==0){
+            printf("map latency: %d\n", map[i].latency);
             return map[i].latency;
         }
     }
@@ -223,11 +224,11 @@ void* download(char* filename){
     // loop through every node for the smallest latency; token here means the machID
     // while(token!=NULL){
     char* token = buf;
+    char cs_str[4];
     while ((token = strtok(token, ";")) != NULL){
         printf("loop11111\n");
-        puts(token);
         checksum = strtok(NULL, ";");
-        puts(checksum);
+        printf("token and checksum: %s and %s", token, checksum);
 
         port=get_port(token);
         load = getload(port);//get the load of the node
@@ -239,15 +240,18 @@ void* download(char* filename){
         if(min_score==score){
             min_port=port;
             printf("min checksm:");
-            char cs_str[4];
             strcpy(cs_str, checksum);
             min_checksum = atoi(cs_str);
             printf("min checksm: %d", min_checksum);
         }
+        printf("above token = NULL\n");
         token = NULL;
     }
+    printf("before retry loop\n");
+
     /* send download request to selected peer */
     /* re-fetch on mismatch */
+    
     while (checksum_check(min_checksum, token) == -1) {
         printf("retry loop\n");
         sock=send_message(IP,min_port,message); //send download;filename to the intended file
@@ -271,7 +275,6 @@ void* download(char* filename){
         token=strtok(buf,";");
         token=strtok(NULL,";");
         token=strtok(NULL,";");
-        puts(token);
     }
 
     fp=fopen(path,"w");
