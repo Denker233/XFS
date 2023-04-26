@@ -17,6 +17,10 @@
 #include <dirent.h>
 #include <math.h>
 #include <limits.h>
+#include <stdbool.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #define MAX_CLIENTS 100
 #define MAX_SUBSCRIPTIONS 10

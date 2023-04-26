@@ -82,6 +82,7 @@ int resource_locate(char* resource, char* result) {
                 strcat(result, node_list[i]);
                 strcat(result, ";");
                 strcat(result, checksum);
+                strcat(result, ";");
                 printf("result while: %s\n",result);
                 memset(current,0,sizeof(current));
                 continue;
@@ -147,7 +148,6 @@ char* receive_udp_message(int arg) {
         strcpy(buf_copy, buf);
         // char* saveptr;
         request = strtok(buf_copy, ";");
-        // request = strtok_r(buf, ";", &saveptr);
         printf("request:%s\n",request);
         /* Calling methods according to request */
         printf("after request\n");
@@ -163,7 +163,6 @@ char* receive_udp_message(int arg) {
         else if (strcmp(request, "download") == 0 || strcmp(request, "find") == 0) {
             printf("in download\n");
             char* name;
-            // name = strtok_r(NULL, ";", &saveptr);
             name = strtok(NULL, ";");
             printf("filename: %s\n",name);
             char nodes[100];
@@ -174,13 +173,17 @@ char* receive_udp_message(int arg) {
         }
         else if (strcmp(request, "boot")==0) { // update;file1;file2;file3
             char* node_name;
-            // node_name = strtok_r(NULL, ";", &saveptr);
             node_name = strtok(NULL, ";");
             printf("before updatelist\n");
             update_list(node_name, buf);
             char* notify;
             notify = "Update succeed\n";
             sendto(sockfd, notify, sizeof(notify), 0, (struct sockaddr *)&sender_addr, addr_len);
+        }
+        else if (strcmp(request, "ping")==0){
+            printf("in ping branch\n");
+            char* pong="pong";
+            sendto(sockfd, pong, sizeof(pong), 0, (struct sockaddr *)&sender_addr, addr_len);
         }
         
     }
