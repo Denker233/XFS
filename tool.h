@@ -26,7 +26,7 @@
 #define MAX_SUBSCRIPTIONS 10
 #define MAXSTRING 120
 #define MAXBUFLEN 120
-#define MAXNODES 20
+#define MAXNODES 10
 
 
 // struct Sock_info{

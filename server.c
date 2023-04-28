@@ -2,11 +2,15 @@
 
 #define MAX_CLIENT 10
 
-int client_count=1;
+int client_count=0, port_index=0,thread_index=0;//port)_index to send for ping thread to use
 int server_port = 8002;
-int port_list[10] = {7072, 8022, 8030, 8040}; // port of the existing node
+int port_list[11] = {7075, 8022, 8030, 8040,6000,6001,6002,6003,6004,6005,8002}; 
 char* node_list[10] = {"node1", "node2", "node3", "node4", "\0"};
 char files[MAXNODES][152] = {{0}}; // files[0][j] = "123.txt;118"
+int fd_list[MAX_CLIENT];
+pthread_mutex_t num_client_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t num_thread_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_t ping_thread[MAX_CLIENT];
 
 
 
@@ -128,7 +132,9 @@ int bind_udp(int port){
     return sockfd;
 }
 
+void* set_up_connection();
 char* receive_udp_message(int arg) {
+    char notify[50];
     int sockfd = arg;
     char buf[MAXBUFLEN];
     memset(buf,0,sizeof(buf));
@@ -168,7 +174,7 @@ char* receive_udp_message(int arg) {
             char nodes[100];
             memset(nodes, 0, sizeof(nodes));
             resource_locate(name, nodes);
-            printf("all nodes with that file: %s",nodes);
+            printf("all nodes with that file: %s\n",nodes);
             sendto(sockfd, nodes, sizeof(nodes), 0, (struct sockaddr *)&sender_addr, addr_len);
         }
         else if (strcmp(request, "boot")==0) { // update;file1;file2;file3
@@ -176,9 +182,14 @@ char* receive_udp_message(int arg) {
             node_name = strtok(NULL, ";");
             printf("before updatelist\n");
             update_list(node_name, buf);
-            char* notify;
-            notify = "Update succeed\n";
+            if(port_index>(sizeof(port_list)/sizeof(int))){
+                strcpy(notify,"no port");
+                sendto(sockfd, notify, sizeof(notify), 0, (struct sockaddr *)&sender_addr, addr_len);
+            }
+            sprintf(notify,"%d",port_list[port_index++]);
+            printf("before sendto in boot\n");
             sendto(sockfd, notify, sizeof(notify), 0, (struct sockaddr *)&sender_addr, addr_len);
+
         }
         else if (strcmp(request, "ping")==0){
             printf("in ping branch\n");
@@ -188,22 +199,34 @@ char* receive_udp_message(int arg) {
         
     }
 }
+void* set_up_connection(){
+    pthread_mutex_lock(&num_client_lock);
+    int local_index = client_count;
+    client_count++;
+    pthread_mutex_unlock(&num_client_lock);
+    printf("port number: %d\n",port_list[local_index]);
+    fd_list[local_index] = (bind_udp(port_list[local_index]));
+    while (1) {
+        receive_udp_message(fd_list[local_index]);
+
+    }
+}
 
 
 
 
 int main(){
-    // Initial server port
-    int fd_list[MAX_CLIENT];
-    // for (int i; i < MAX_CLIENT; i++){
-    //     fd_list[i] = (bind_udp(port_list[i]));
-    // }
-    fd_list[0] = (bind_udp(server_port));
-    while (1) {
-        char* msg;
-        msg = receive_udp_message(fd_list[0]);
-
-        
+    // Initial server port for 
+    for (int i=0; i < MAX_CLIENT; i++){//extra one is boot/download connection
+        pthread_mutex_lock(&num_thread_lock);
+        if(pthread_create(&ping_thread[thread_index++],NULL,set_up_connection,NULL)<0)
+            {
+                fprintf(stderr, "Error creating thread\n");
+                exit(1);
+            }
+        pthread_mutex_unlock(&num_thread_lock);
     }
+    set_up_connection();
+    
 }
 
