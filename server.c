@@ -1,12 +1,11 @@
 #include "tool.h"
 
-#define MAX_CLIENT 10
 
-int client_count=0, port_index=0,thread_index=0;//port)_index to send for ping thread to use
+int client_count=0,thread_index=0;//port)_index to send for ping thread to use
 int server_port = 8002;
-int port_list[11] = {7075, 8022, 8030, 8040,6000,6001,6002,6003,6004,6005,8002}; 
+int port_list[MAX_CLIENT+1] = {7075,6000,6001,6002,6003,8002}; // ping port for each client and one more for other request
 char* node_list[10] = {"node1", "node2", "node3", "node4", "\0"};
-char files[MAXNODES][152] = {{0}}; // files[0][j] = "123.txt;118"
+char files[MAX_CLIENT][152] = {{0}}; // files[0][j] = "123.txt;118"
 int fd_list[MAX_CLIENT];
 pthread_mutex_t num_client_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t num_thread_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -29,6 +28,7 @@ int update_list(char* node_name, char* new_resource){
             break;
         }
     }
+    memset(files[i],0,sizeof(files[0]));//clear previous boot info
     // loop over the file list and update to files[]
     checksum = strtok(NULL, ";");
     strcat(files[i], name);
@@ -52,13 +52,13 @@ int update_list(char* node_name, char* new_resource){
 int resource_locate(char* resource, char* result) {
     char current[200];
    
-    for (int i = 0; i <MAXNODES; i++) {
+    for (int i = 0; i <MAX_CLIENT; i++) {
         for (int j = 0; j < 152; j++) {
             printf("%c ", files[i][j]);
         }
         printf("\n");
     }
-    for (int i = 0; i < MAXNODES; i++){
+    for (int i = 0; i < MAX_CLIENT; i++){
         strcpy(current,files[i]);
         // printf("current and loop: %s %d\n",current,i);
         char* name;
@@ -70,6 +70,8 @@ int resource_locate(char* resource, char* result) {
             continue;
         }
         char* checksum = strtok(NULL, ";");
+        printf("token and checksum: %s and %s", name, checksum);
+
         // printf("name first: %s\n",name);
         if (name!=NULL&&strcmp(name, resource) == 0) {
             strcat(result, node_list[i]);
@@ -180,21 +182,41 @@ char* receive_udp_message(int arg) {
         else if (strcmp(request, "boot")==0) { // update;file1;file2;file3
             char* node_name;
             node_name = strtok(NULL, ";");
-            printf("before updatelist\n");
+            printf(" boot!!!!!!!\n");
+            int index_in_files = atoi(&node_name[strlen(node_name)-1])-1;
             update_list(node_name, buf);
-            if(port_index>(sizeof(port_list)/sizeof(int))){
+            if(index_in_files>(sizeof(port_list)/sizeof(int))){
                 strcpy(notify,"no port");
                 sendto(sockfd, notify, sizeof(notify), 0, (struct sockaddr *)&sender_addr, addr_len);
+                memset(notify, 0, sizeof(notify));
+                continue;
             }
-            sprintf(notify,"%d",port_list[port_index++]);
+            sprintf(notify,"%d",port_list[index_in_files]);
             printf("before sendto in boot\n");
             sendto(sockfd, notify, sizeof(notify), 0, (struct sockaddr *)&sender_addr, addr_len);
-
+            memset(notify, 0, sizeof(notify));
+        }
+        else if (strcmp(request, "update")==0){
+            char* node_name;
+            node_name = strtok(NULL, ";");
+            printf("before updatelist in regular update\n");
+            int index_in_files = atoi(&node_name[strlen(node_name)-1])-1;
+            update_list(node_name, buf);
+            strcpy(notify,"not boot");
+            printf("not boot send from server\n");
+            sendto(sockfd, notify, sizeof(notify), 0, (struct sockaddr *)&sender_addr, addr_len);
+            memset(notify, 0, sizeof(notify));
         }
         else if (strcmp(request, "ping")==0){
             printf("in ping branch\n");
             char* pong="pong";
             sendto(sockfd, pong, sizeof(pong), 0, (struct sockaddr *)&sender_addr, addr_len);
+        }
+        else if(strcmp(request, "fail")==0){
+            char* node_index;
+            node_index = strtok(NULL, ";");
+            memset(files[atoi(node_index)],0,sizeof(files[atoi(node_index)]));
+            sendto(sockfd, "fail_update", sizeof("fail_update"), 0, (struct sockaddr *)&sender_addr, addr_len);
         }
         
     }
