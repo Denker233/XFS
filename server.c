@@ -20,7 +20,9 @@ int update_list(char* node_name, char* new_resource){
     char* checksum;
     name = strtok(new_resource, ";");
     name = strtok(NULL, ";");
-    name=strtok(NULL, ";");
+    if((name=strtok(NULL, ";"))==NULL){//empty repo
+        return 0;
+    }
 
     // find the corresponding node index to update
     for (i = 0; i < client_count; i++){
