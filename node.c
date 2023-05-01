@@ -88,7 +88,7 @@ int send_message(char *IP, int Port, char *message)
 
     freeaddrinfo(servinfo);
 
-    printf("talker: sent %d bytes to %s\n", numbytes, IP);
+    // printf("talker: sent %d bytes to %s\n", numbytes, IP);
     // close(sockfd);
     return sockfd;
 }
@@ -105,10 +105,10 @@ void read_latency(){//read latency.txt file and store the key value pair into ma
     char line[100];
     int i =0,j=0;
     while (fgets(line, sizeof(line), file) != NULL && i<MAX_CLIENT) {
-        printf("%s\n", line);
+        // printf("%s\n", line);
         token = strtok(line,":");
         strcpy(map[i].machID,token);
-        printf("%s\n", token);
+        // printf("%s\n", token);
         token = strtok(NULL,":");
         while(j<MAX_CLIENT&&token!=NULL){
             map[i].lats[j]=atoi(token);
@@ -154,33 +154,12 @@ void send_granted_receive(char* message,int receiver_port,int interval){//0 for 
                 perror("recvfrom");
                 exit(1);
             }
-            printf("buf: %s\n",buf);
-            strcpy(message,buf);
-            // if(iftoserver==1){
-            //     pthread_mutex_lock(&serverdown_lock);
-            //     server_down = false;
-            //     printf("server is not down\n");
-            //     pthread_mutex_unlock(&serverdown_lock);
-            // }
-            // else if(iftoserver==0){
-            //     index_each_port=get_indexfrom_port(receiver_port);
-            //     printf("node%d is alive\n",index_each_port+1);
-            // }
+            // printf("buf: %s\n",buf);
+            strcpy(message,buf); 
             return;
         }
-        // alarm(0);
         close(sock_ping);
         memset(buf, 0, sizeof(buf));
-        // if(iftoserver==1){
-        //         pthread_mutex_lock(&serverdown_lock);
-        //         server_down = true;
-        //         printf("server is down\n");
-        //         pthread_mutex_unlock(&serverdown_lock);
-        // }
-        // else if(iftoserver==0){//request another node to download files from there but fails
-        //     index_each_port=get_indexfrom_port(receiver_port);
-        //     printf("node%d is down\n",index_each_port+1);
-        // }
         loop++;
     }
 }
@@ -325,20 +304,21 @@ int getload(int port){//get load from another node
         return -1;
     }
 }
-// char* find(char* filename){
-//     char message[100];
-//     char* buf = malloc(sizeof(char)*MAXBUFLEN);
-//     strcpy(message,"download;");
-//     strcat(message,filename);
-//     strcpy(buf,message);
-//     while(!server_down){
-//         printf("request send to another node: %s\n", message);
-//         send_granted_receive(buf,server_port,1);
-//         printf("receive from another node: %s\n", buf);
-//         // strcpy(buf,message);
-//         return buf;
-//     }
-// }
+char* find(char* filename){
+    char message[100];
+    char* buf = malloc(sizeof(char)*MAXBUFLEN);
+    strcpy(message,"download;");
+    strcat(message,filename);
+    strcpy(buf,message);
+    while(!server_down){
+        printf("request send to another node: %s\n", message);
+        send_granted_receive(buf,server_port,1);
+        printf("receive from another node: %s\n", buf);
+        // strcpy(buf,message);
+        return buf;
+    }
+    return "";
+}
 
 
 void* download(char* filename){
@@ -353,7 +333,9 @@ void* download(char* filename){
     struct port_score_t ports[MAX_CLIENT];
     strcpy(buf,"");
     int load,latency,score,port,min_port;
-    // char* buf=find(filename);
+    // char* buf2=find(filename);
+    // strcpy(buf,buf2);
+    // free(buf2);
     strcpy(message,"download;");
     strcat(message,filename);
     strcpy(buf,message);
@@ -381,7 +363,7 @@ void* download(char* filename){
             load = getload(port);//get the load of the node
             printf("load is %d\n", load);
             latency = get_latency(token);
-            score=load+0.1*latency;
+            score=0.5*load+0.001*latency;
             if(load==-1){score=INT_MAX;};
             ports[rank].port=port;
             ports[rank].score=score;
@@ -455,13 +437,17 @@ void* download(char* filename){
                 printf("refetch from other node: %s\n", buf);
                 printf("%s",buf);
                 printf("\n");
-                buf[numbytes] = '\0';  // get back a list of nodes with that filename
+                buf[numbytes] = '\0';  
                 strcpy(path,dirname);
                 strcat(path,"/");
                 strcat(path,filename);
                 token=strtok(buf,";");
                 token=strtok(NULL,";");
                 token=strtok(NULL,";");//content
+                if(rand()%4==0){//modify a byte
+                    strcpy(&token[1],"");
+                    printf("change value\n");
+                }
                 if(checksum_check(ports[rank].checksum, token) == -1){// send fail then resend and not updatting rank
                     memset(buf,0,sizeof(buf));
                     continue;
@@ -482,6 +468,7 @@ void* download(char* filename){
             rank++;
         }
         if(buf==0){
+            printf("all nodes have that file is down\n");
             return NULL;
         };
         
@@ -626,20 +613,6 @@ char* receive_udp_message(int sock,struct sockaddr_storage sender_addr,socklen_t
             load_index--;
             printf("inside receive get load after\n");
         }
-        // else if (strcmp(token,"downloaded")==0){
-        //     puts("inside downloaded");
-        //     strcpy(path,dirname);
-        //     strcat(path,"/");
-        //     strcat(path,filename);
-        //     puts(path);
-        //     // printf("path after downloaded:%s\n",path);
-        //     content=strtok(NULL,";");
-        //     fp = fopen(path, "w");
-        //     fprintf(fp, "%s", content);
-        //     fclose(fp);
-        //     memset(path,0,sizeof(path));
-        //     memset(content,0,sizeof(content));
-        // }
         memset(buf,0,sizeof(buf));
     }
 }
@@ -660,32 +633,6 @@ void* receive_node(){//receive node to node request
     puts("after receive");    
 }
 
-// int find(char* resource){
-//     while(!server_down){
-//     char message[100] = "find;";
-//     strcat(message, resource);
-//     int sockfd = send_message(server_IP, server_port, message);
-//     memset(message, 0, sizeof(message));
-//     struct sockaddr_storage sender_addr;
-//     socklen_t addr_len = sizeof(sender_addr);
-//     recvfrom(sockfd, message, sizeof(message), 0, (struct sockaddr *)&sender_addr, &addr_len);
-//     printf("File list: %s", message);
-//     return 0;
-//     }
-//     return -1;
-// }
-// void ping_handler(){
-//     close(sock_ping);
-//     printf("ping hanlder fired\n");
-//     pthread_mutex_lock(&serverdown_lock);
-//     server_down = true;
-//     pthread_mutex_unlock(&serverdown_lock);
-//     handler_fired=1;
-//     printf("before send message\n");
-//     send_message(server_IP,server_port, "ping;");
-//     printf("after send message\n");
-//     return;
-// }
 
 
 void* ping(){
@@ -706,9 +653,9 @@ void* ping(){
     struct timeval tv;
     while(1){
         sleep(3);
-        printf("pong loop: %d\n",loop);
+        // printf("pong loop: %d\n",loop);
         strcpy(message,"ping;");
-        printf("before send\n");
+        // printf("before send\n");
         sock_ping=send_message(server_IP,ping_port,message);
         // alarm(3);//should go back after handler
         // sigaction (SIGALRM, &act, NULL); 
@@ -728,10 +675,10 @@ void* ping(){
             server_down = false;
             printf("server is not down\n");
             pthread_mutex_unlock(&serverdown_lock);
-            printf("should be pong: %s\n",buf);
+            // printf("should be pong: %s\n",buf);
             continue;
         }
-        printf("should be pong: %s\n",buf);
+        // printf("should be pong: %s\n",buf);
         // alarm(0);
         close(sock_ping);
         memset(buf, 0, sizeof(buf));
@@ -757,34 +704,23 @@ void* update_loop(){
 
 
 
-int main(void) {
+int main(int argc, char* argv[]) {
+    if (argc == 3) {
+        strcpy(ID,argv[1]);
+        freopen(argv[2], "r", stdin);
+        printf("choose to run script\n");
+    }
     pthread_t node_node_thread[MAX_CLIENT-1],download_thread[MAX_CLIENT-1],ping_thread,update_thread;
     strcpy(dirname,"/home/tian0138/csci-5105/XFS/share/");
     // strcpy(dirname, "/home/wan00807/5105/XFS/share/");
     strcpy(local_storage,dirname);
-    // strcat(local_storage,ID); 
-    printf("Input machID\n");
-    scanf("%s",ID);
-    printf("%s\n",ID);
+    if (argc != 3) {
+        printf("Input machID\n");
+        scanf("%s",ID);
+        printf("%s\n",ID);
+    }
     strcat(dirname,ID); 
     read_latency();//read latency.txt to map struct
-    if(get_latency(ID)==-1){ //add new node to latency file 
-        // FILE *fp=fopen(strcat("/home/tian0138/csci-5105/XFS/share/","latency.txt"),"w");
-        FILE *fp=fopen("./share/latency.txt","w");
-        if(fp == NULL) {
-            printf("fail open nlatency txt\n");
-        }
-        char new_node[50];
-        int latency;
-        printf("Input new node's port and latency\n");
-        scanf("%d %d",&node_node_port,&latency);
-        sprintf(new_node,"%s",ID);
-        fseek(fp, 0, SEEK_END);
-        fwrite(new_node,sizeof(char),sizeof(new_node),fp);
-        sprintf(new_node,":%d:%d",latency,node_node_port);
-        fseek(fp, 0, SEEK_END);
-        fwrite(new_node,sizeof(int),2,fp);
-    }
     char func[10];
     char filename[15];
     int main_detect=0, node_thread=0;
@@ -793,8 +729,6 @@ int main(void) {
     fd_set readfds;
     puts("before boots");
     int boot_time=0;
-    // int flags = fcntl(STDIN_FILENO, F_GETFL); //make scanf non-blocking
-    // fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK); 
     while(1){//this loop is blocked in while(!server_down); if server is down then reboot
         if(!server_down){
             boot();//when server is back or run for the first time make sure update first
@@ -846,9 +780,24 @@ int main(void) {
                     pthread_mutex_unlock(&download_lock);
                 }
                 else if (strcmp(func,"find") == 0) {
-                    // char* nodelist=find(filename);
-                    // printf("all nodes with that file:%s\n",nodelist);
-                    // free(nodelist);
+                    char* node_sum=find(filename);
+                    char nodelist[MAXBUFLEN];
+                    int i=0;
+                    if(node_sum!=""){
+                        char* token = strtok(node_sum, ";");
+                        while(token!=NULL){
+                            strcpy(&nodelist[i],token);
+                            strcat(&nodelist[i],";");
+                            token = strtok(NULL, ";");//checksum
+                            token = strtok(NULL, ";");
+                            i+=6;
+                        }
+                        printf("all nodes with that file:%s\n",nodelist);
+                    }
+                    else{
+                        printf("no node has that file\n");
+                    }
+                    free(node_sum);
 
                 }
             }
@@ -859,8 +808,15 @@ int main(void) {
         }
         main_detect=1;
     }
+    for(int i=0;i<MAX_CLIENT-1;i++){
+        pthread_join(node_node_thread[i],NULL);
+    }
+    for(int i = 0;i<download_index+1;i++){
+        pthread_join(download_thread[i],NULL);
+    }
+    pthread_join(ping_thread,NULL);
+    pthread_join(update_thread,NULL);
 
-
-    // pthread_join(download_thread,NULL);
+    
 }
 
