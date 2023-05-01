@@ -12,7 +12,7 @@ make
 ```
 make all
 make server
-make client
+make node
 ```
 
 
@@ -34,9 +34,9 @@ function filename //(functions include download and find) (filename of your choi
 ### Design:
 
 #### Server:
-The server tracks what files are in each node.
+The server tracks what files are in each node. \
 
-For the server, there are MAXCLIENT+1 ports. One port for pinging for each node and one port for various other requests that come from different nodes.
+For the server, there are MAXCLIENT+1 ports. One port for pinging for each node and one port for various other requests that come from different nodes. \
 
 Since there is only one thread that handle various other request one at a time and all other thread is doing so there is no race condition at the server side.
 
@@ -172,7 +172,16 @@ download 123.txt
 There should be a 123.txt file in node2's repo.
 
 ## Case 4
-checksum???
+
+Checksum, in ```void* download(char* filename)```, there is a code snippet adding in-consistency to the file transfer
+```
+if(rand()%4==0){//modify a byte
+    strcpy(&token[1],"");
+    printf("change value\n");
+}
+```
+There is a 25% rate of failing the checksum check. Another download request will be send to the server. The re-request will keep going if the checksum keep failing.
+Thus, if you want to make the transer consistent, comment the code above.
 
 ## Workload Distribution:
 Minrui Tian:General Design and implementation of server.c, local_write() and debugging and editing client.c
