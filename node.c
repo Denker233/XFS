@@ -629,6 +629,7 @@ void* receive_node(){//receive node to node request
     int sock=bind_udp(map[atoi(&ID[strlen(ID)-1])-1].ports[port_index++]);
     pthread_mutex_unlock(&port_lock);
     puts("after bind");
+    printf("receive port: %d\n",map[atoi(&ID[strlen(ID)-1])-1].ports[port_index++]);
     receive_udp_message(sock,sender_addr,addr_len);
     puts("after receive");    
 }
@@ -711,8 +712,8 @@ int main(int argc, char* argv[]) {
         printf("choose to run script\n");
     }
     pthread_t node_node_thread[MAX_CLIENT-1],download_thread[MAX_CLIENT-1],ping_thread,update_thread;
-    strcpy(dirname,"/home/tian0138/csci-5105/XFS/share/");
-    // strcpy(dirname, "/home/wan00807/5105/XFS/share/");
+    // strcpy(dirname,"/home/tian0138/csci-5105/XFS/share/");
+    strcpy(dirname, "/home/wan00807/5105/XFS/share/");
     strcpy(local_storage,dirname);
     if (argc != 3) {
         printf("Input machID\n");
