@@ -1,5 +1,7 @@
 # Project 3: XFS
-
+X500:
+tian0138 Minrui Tian
+wan00807 Yidan Wang
 ## Pledge:
 No one sought out any on-line solutions
 
@@ -82,6 +84,8 @@ When receiving a getload request from other node, it will give back its load num
 Upon receiving a find request from user, it will request server to give it a list of all the live nodes have that file.
 
 If the file doesn't exist, it will print to notify the user.
+
+There may be potential race condition when there are mutiple node tring to download from the same node and the node itself tring to update/boot to the server. And when there are multiple task/load the node has to deal with then the load_index may face race conditon. Those situations should be prevented by the use of locks.
 
 #### Algorithm
 
@@ -172,10 +176,38 @@ download 123.txt
 There should be a 123.txt file in node2's repo.
 
 ## Case 4
-checksum???
+Checksum \
+In ```void* download(char* filename)```, there is a code snippet adding in-consistency to the file transfer
+```
+if(rand()%4==0){//modify a byte
+    strcpy(&token[1],"");
+    printf("change value\n");
+}
+```
+There is a 25% rate of failing the checksum check. Another download request will be send to the server. The re-request will keep going if the checksum keep failing.
+Thus, if you want to make the transer consistent, comment the code above.
 
-## Workload Distribution:
-Minrui Tian:General Design and implementation of server.c, local_write() and debugging and editing client.c
-Yidan Wang: primary_back_up(),general design and implementation of client.c, debugging and editing server.c
-Tianhong Zhang: quorum() Project 2: Consistency
 
+## Peer Selection
+
+score = 0.5*load+0.001*latency
+
+In finding ```123.txt``` task, we test 3 senerio that can reflect the peer selection algorithm
+
+When ```123.txt``` only exixst on node 1:
+Node 4 and node 5 send concurrently send download request, \
+Node 4: 0.000248 seconds \
+Node 5: 0.000241 seconds \
+
+When ```123.txt``` exixst on node 1 and 2:
+Node 4 and node 5 send concurrently send download request, \
+Node 5: 0.000211 seconds \
+Node 3: 0.000166 seconds \
+where thy both choose node 2 as the source which has lower latency
+
+When ```123.txt``` exixst on node 1, 2 and 3:
+Node 4 and node 5 send concurrently send download request, \
+Node 4: 0.000307 seconds \
+Node 5: 0.000228 seconds \
+
+Theoretically, with more cadidate of lower latency, the download will be faster. However in our experiment, the last case perform slower than expected. The possible reason is that a) latency natured in hand testing, b) larger computational cost of sorting the score of cadidates. This should perform better when the system scaled up where the computational cost differences are smaller.

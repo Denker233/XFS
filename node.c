@@ -18,6 +18,7 @@ bool server_down = false;
 pthread_mutex_t serverdown_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t download_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t port_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t load_lock = PTHREAD_MUTEX_INITIALIZER;
 int handler_fired=0;
 
 int min(int x,int y){
@@ -322,6 +323,9 @@ char* find(char* filename){
 
 
 void* download(char* filename){
+    clock_t start, end;
+    double time_used;
+    start = clock();
     int empty=1,rank=0;
     pthread_t thread_ids[20];
     char* checksum;
@@ -487,8 +491,15 @@ void* download(char* filename){
         }
         close(sock);
         printf("after close sock\n");
+        end = clock();
+        printf("after end\n");
+        printf("end-start %ld\n",end-start);
+        time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+        printf("Time taken: %f seconds\n", time_used);
         updatelist();//The peer who downloaded the file should send the new updated file list to the tracking server.
+        pthread_mutex_lock(&load_lock);
         load_index--;
+        pthread_mutex_unlock(&load_lock);
         // free(buf);
     }
 
@@ -590,7 +601,9 @@ char* receive_udp_message(int sock,struct sockaddr_storage sender_addr,socklen_t
         token = strtok(message,";");
         puts(token);
         if(strcmp(token,"download")==0){//request from another node
+            pthread_mutex_lock(&load_lock);
             load_index++;
+            pthread_mutex_unlock(&load_lock);
             token=strtok(NULL,";");
             strcpy(filename,token);
             memset(message,0,sizeof(message));
@@ -602,15 +615,21 @@ char* receive_udp_message(int sock,struct sockaddr_storage sender_addr,socklen_t
                 puts("sendto in receive fail");
                 exit(1);
             }
+            pthread_mutex_lock(&load_lock);
             load_index--;//finish uploading
+            pthread_mutex_unlock(&load_lock);
         }
         else if(strcmp(token,"getload")==0){//request from another node
+            pthread_mutex_lock(&load_lock);
             load_index++;
+            pthread_mutex_unlock(&load_lock);
             printf("inside receive get load\n");
             memset(message,0,sizeof(message));
             sprintf(message,"%d",load_index);
             int bytes=sendto(sock, message, sizeof(message), 0, (struct sockaddr *)&sender_addr, addr_len);
+            pthread_mutex_lock(&load_lock);
             load_index--;
+            pthread_mutex_unlock(&load_lock);
             printf("inside receive get load after\n");
         }
         memset(buf,0,sizeof(buf));
@@ -626,7 +645,10 @@ void* receive_node(){//receive node to node request
     char filename[20];
     puts("in receive node");
     pthread_mutex_lock(&port_lock);
-    int sock=bind_udp(map[atoi(&ID[strlen(ID)-1])-1].ports[port_index++]);
+    if(map[atoi(&ID[strlen(ID)-1])-1].ports[port_index]==0){port_index++;}
+    printf("receive port: %d\n",map[atoi(&ID[strlen(ID)-1])-1].ports[port_index]);
+    int sock=bind_udp(map[atoi(&ID[strlen(ID)-1])-1].ports[port_index]);
+    port_index++;
     pthread_mutex_unlock(&port_lock);
     puts("after bind");
     receive_udp_message(sock,sender_addr,addr_len);
@@ -776,7 +798,9 @@ int main(int argc, char* argv[]) {
                         fprintf(stderr, "Error creating thread\n");
                         return -1;
                     }
+                    pthread_mutex_lock(&load_lock);
                     load_index++;
+                    pthread_mutex_unlock(&load_lock);
                     pthread_mutex_unlock(&download_lock);
                 }
                 else if (strcmp(func,"find") == 0) {
@@ -819,4 +843,3 @@ int main(int argc, char* argv[]) {
 
     
 }
-

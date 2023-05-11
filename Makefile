@@ -1,8 +1,8 @@
 server: server.c
-	gcc -pthread server.c -o server
+	gcc -pthread -o server server.c
 
 client: node.c
-	gcc -pthread node.c -o node
+	gcc -pthread -o node node.c
 
 .PHONY: all run_server run_client clean
 

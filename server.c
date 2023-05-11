@@ -4,7 +4,7 @@
 int client_count=0,thread_index=0;//port)_index to send for ping thread to use
 int server_port = 8002;
 int port_list[MAX_CLIENT+1] = {7075,6000,6001,6002,6003,8002}; // ping port for each client and one more for other request
-char* node_list[10] = {"node1", "node2", "node3", "node4", "\0"};
+char* node_list[10] = {"node1", "node2", "node3", "node4", "node5","\0"};
 char files[MAX_CLIENT][152] = {{0}}; // files[0][j] = "123.txt;118"
 int fd_list[MAX_CLIENT];
 pthread_mutex_t num_client_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -19,10 +19,16 @@ int update_list(char* node_name, char* new_resource){
     int i;
     char* checksum;
     name = strtok(new_resource, ";");
+    // printf("%s\n",name);
     name = strtok(NULL, ";");
+    // printf("%s\n",name);
     if((name=strtok(NULL, ";"))==NULL){//empty repo
+        printf("empty repo\n");
+        // printf("%s\n",name);
         return 0;
     }
+    printf("no return\n");
+    // printf("%s\n",name);
 
     // find the corresponding node index to update
     for (i = 0; i < client_count; i++){
@@ -32,7 +38,12 @@ int update_list(char* node_name, char* new_resource){
     }
     memset(files[i],0,sizeof(files[0]));//clear previous boot info
     // loop over the file list and update to files[]
-    checksum = strtok(NULL, ";");
+    if((checksum = strtok(NULL, ";"))==NULL){
+        printf("in check sum\n");
+        // printf("check sum:%s\n",name);
+        return 0;
+    }
+    printf("after check sum  and client count: %d\n",client_count);
     strcat(files[i], name);
     strcat(files[i], ";");
 
@@ -64,7 +75,12 @@ int resource_locate(char* resource, char* result) {
         strcpy(current,files[i]);
         // printf("current and loop: %s %d\n",current,i);
         char* name;
-        name=strtok(current, ";");
+        // name=strtok(current, ";");
+        if((name=strtok(current, ";"))==NULL){//empty repo
+        // strcat(result, ";");
+        printf("inside");
+        continue;
+    }
         
         // name = strtok_r(name, ";", &saveptr);
         if(current==NULL){
